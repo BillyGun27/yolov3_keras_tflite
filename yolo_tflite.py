@@ -8,21 +8,35 @@ from utils.utils import letterbox_image
 from utils.setup_tool import get_classes,get_anchors
 import cv2
 
-model_path="model_data/small_mobilenet_yolo.tflite"
+model_path="model_data/224small_mobilenet_yolo.tflite"
+#model_path="model_data/tiny_yolo.tflite"
 
 score_thres = 0.3 #obj, score
 iou_thres = 0.45 #nms, iou
-model_image_size = (416 , 416)
+#model_image_size = (416 , 416)
+model_image_size = (224, 224)
 
 classes_path = 'class/voc_classes.txt'
 anchors_path = 'anchors/yolo_anchors.txt'
 
+#classes_path = 'class/coco_classes.txt'
+#anchors_path = 'anchors/tiny_yolo_anchors.txt'
+
+
 class_names = get_classes(classes_path)
-masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 anchors = get_anchors(anchors_path)
 
 num_classes = len(class_names)
 num_anchors = len(anchors)
+
+num_layers = num_anchors//3
+
+if num_layers==3 :
+    masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]] 
+elif num_layers==2 :
+    masks =  [[3,4,5], [0,1,2]]
+else :
+    masks = [[0,1,2]]
 
 # Generate colors for drawing bounding boxes.
 hsv_tuples = [(x / len(class_names), 1., 1.)
@@ -83,7 +97,7 @@ def process_feats( out, anchors, mask):
 
     box_xy += grid
     box_xy /= (grid_w, grid_h)
-    box_wh /= (416, 416)
+    box_wh /= model_image_size #(416, 416)
     box_xy -= (box_wh / 2.)
     boxes = np.concatenate((box_xy, box_wh), axis=-1)
 
@@ -222,23 +236,20 @@ def tflite_out(image_data , model_path="model_data/small_mobilenet_yolo.tflite")
         input_data = image_data
         interpreter.set_tensor(input_details[0]['index'], input_data)
 
-        interpreter.invoke()
-        output_data1 = interpreter.get_tensor(output_details[0]['index'])
-        output_data2 = interpreter.get_tensor(output_details[1]['index'])
-        output_data3 = interpreter.get_tensor(output_details[2]['index'])
-
-        #print(output_data.shape)
-        #print(output_data2.shape)
-        #print(output_details)
+        fmap = model_image_size[0]//32
+        mapsize = [1,2,4]
 
         outs = []
+        interpreter.invoke()
 
-        output_data1 = np.reshape(output_data1 , (1, 13, 13, num_anchors//3 , (num_classes + 5) ) ) 
-        output_data2 = np.reshape(output_data2 , (1, 26, 26, num_anchors//3, (num_classes + 5) )) 
-        output_data3 = np.reshape(output_data3 , (1, 52, 52, num_anchors//3 , (num_classes + 5) )) 
-        outs.append(output_data1)
-        outs.append(output_data2)
-        outs.append(output_data3)
+        for ly in range(num_layers):
+            output_data = interpreter.get_tensor(output_details[ly]['index'])
+            output_data= np.reshape(output_data , (1, fmap*mapsize[ly], fmap*mapsize[ly] , 3 , (num_classes + 5) ) ) 
+            outs.append(output_data)
+
+
+            #print(output_data.shape)
+            #print(output_details)
 
         return outs
 
@@ -263,7 +274,9 @@ def detect_image(image):
     
     out_boxes, out_classes, out_scores = yolo_out( outs , image_shape )
 
+    print(model_image_size)
     print('Found {} boxes for {}'.format(len(out_boxes), 'img'))
+    #print(out_boxes)
 
     font = ImageFont.truetype(font='font/FiraMono-Medium.otf',
             size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))

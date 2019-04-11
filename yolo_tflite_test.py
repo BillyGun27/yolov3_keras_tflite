@@ -200,7 +200,7 @@ anchor_mask = [[6,7,8], [3,4,5], [0,1,2]]
 
 img = "test_data/london.jpg"
 image = Image.open(img)
-model_image_size = (416 , 416)
+model_image_size = (224 , 224)
 
 image_shape = ( image.size[1], image.size[0] , 3)
 
@@ -219,7 +219,7 @@ print(image_data.shape)
 start = timer()
 
 # Load TFLite model and allocate tensors.
-interpreter = tf.lite.Interpreter(model_path="model_data/small_mobilenet_yolo.tflite")
+interpreter = tf.lite.Interpreter(model_path="model_data/224small_mobilenet_yolo.tflite")
 interpreter.allocate_tensors()
 
 # Get input and output tensors.
@@ -238,10 +238,12 @@ output_data1 = interpreter.get_tensor(output_details[0]['index'])
 output_data2 = interpreter.get_tensor(output_details[1]['index'])
 output_data3 = interpreter.get_tensor(output_details[2]['index'])
 
-#print(output_data.shape)
-#print(output_data2.shape)
+print(output_data1.shape)
+print(output_data2.shape)
+print(output_data3.shape)
 #print(output_details)
 
+'''
 outs = []
 
 output_data1 = np.reshape(output_data1 , (1,13, 13, 3, 25)) 
@@ -320,23 +322,5 @@ cv2.resizeWindow('result', width,height)
 cv2.imshow("result", result)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+'''
 
-
-#pred_xy, pred_wh , pred_conf , pred_class = numpy_yolo_head( output_data ,anchors[anchor_mask[0]], model_image_size )
-
-#pred_detect = np.concatenate([pred_xy, pred_wh , pred_conf , pred_class ],axis=-1)
-
-#print(pred_detect.shape)
-
-#box = np.where(pred_detect[...,4] > 0.5 )
-#box = np.transpose(box)
-
-#for k in range(len(box)):
-#    print( pred_detect[tuple(box[k])] )
-
-#boxes = numpy_yolo_correct_boxes(pred_xy, pred_wh, model_image_size , image_shape )
-#boxes = np.reshape(boxes, [-1, 4])
-#box_scores = pred_conf * pred_class
-#box_scores = np.reshape(box_scores, [-1, num_classes])
-
-#print(boxes)
