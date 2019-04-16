@@ -10,15 +10,8 @@ import cv2
 
 #model_path="model_data/small_mobilenet_yolo.tflite"
 #model_path="model_data/tiny_yolo.tflite"
-#model_path="model_data/224tiny_yolo.tflite"
 #model_path="model_data/mobilenet_trained_model.tflite"
 #model_path="model_data/mobilenetv2_trained_model.tflite"
-model_path="model_data/416bnfuse_small_mobilenets2_trained_model.tflite"
-#model_path="model_data/224small_mobilenets2_trained_model.tflite"
-#model_path="model_data/small_mobilenets2_trained_model.tflite"
-#model_path="model_data/416bnfuse_tiny_yolo.tflite"
-
-print(model_path)
 
 score_thres = 0.3 #obj, score
 iou_thres = 0.45 #nms, iou
@@ -59,12 +52,12 @@ np.random.shuffle(colors)  # Shuffle colors to decorrelate adjacent classes.
 np.random.seed(None)  # Reset seed to default.
 
 # Load TFLite model and allocate tensors.
-interpreter = tf.lite.Interpreter(model_path=model_path)
-interpreter.allocate_tensors()
+#interpreter = tf.lite.Interpreter(model_path=model_path)
+#interpreter.allocate_tensors()
 
 # Get input and output tensors.
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+#input_details = interpreter.get_input_details()
+#output_details = interpreter.get_output_details()
 
 def sigmoid(x):
     """sigmoid.
@@ -237,33 +230,44 @@ def yolo_out( outs , shape):
 
     return boxes, classes, scores
 
-def tflite_out(image_data):
+def tf_out(sess, image_data):
 
-        # Test model on random input data.
-        #input_shape = input_details[0]['shape']
-        #print(input_details[0]['shape'])
-        #input_data = np.array(np.random.random_sample(input_shape), dtype=np.float32)
-        input_data = image_data
-        interpreter.set_tensor(input_details[0]['index'], input_data)
+    fmap = model_image_size[0]//32
+    mapsize = [1,2,4]
 
-        fmap = model_image_size[0]//32
-        mapsize = [1,2,4]
+    outs = []
 
-        outs = []
-        interpreter.invoke()
+    tensor_output1 = sess.graph.get_tensor_by_name('import/conv2d_5/convolution:0')
+    tensor_output2 = sess.graph.get_tensor_by_name('import/conv2d_11/convolution:0')
+    tensor_output3 = sess.graph.get_tensor_by_name('import/conv2d_17/convolution:0')
+    
+    #tensor_output1 = sess.graph.get_tensor_by_name('import/conv2d_7/convolution:0') #v2
+    #tensor_output2 = sess.graph.get_tensor_by_name('import/conv2d_15/convolution:0') #v2
+    #tensor_output3 = sess.graph.get_tensor_by_name('import/conv2d_23/convolution:0') #v2
 
-        for ly in range(num_layers):
-            output_data = interpreter.get_tensor(output_details[ly]['index'])
-            output_data= np.reshape(output_data , (1, fmap*mapsize[ly], fmap*mapsize[ly] , 3 , (num_classes + 5) ) ) 
-            outs.append(output_data)
+    #tensor_output1 = sess.graph.get_tensor_by_name('import/conv2d_10/convolution:0') #tiny
+    #tensor_output2 = sess.graph.get_tensor_by_name('import/conv2d_13/convolution:0') #tiny
 
+    tensor_input = sess.graph.get_tensor_by_name('import/input_1:0')
 
-            #print(output_data.shape)
-            #print(output_details)
+    predictions1,  predictions2 , predictions3 = sess.run([tensor_output1,tensor_output2,tensor_output3], {tensor_input: image_data})
+    #predictions1,  predictions2 = sess.run([tensor_output1,tensor_output2], {tensor_input: image_data})#tiny
+    #print('\n===== output predicted results =====\n')
+    #print(predictions1.shape)
+    #print(predictions2.shape)
+    #print(predictions3.shape)
 
-        return outs
+    predictions1= np.reshape(predictions1 , (1, fmap*mapsize[0], fmap*mapsize[0] , 3 , (num_classes + 5) ) ) 
+    predictions2= np.reshape(predictions2 , (1, fmap*mapsize[1], fmap*mapsize[1] , 3 , (num_classes + 5) ) ) 
+    predictions3= np.reshape(predictions3 , (1, fmap*mapsize[2], fmap*mapsize[2] , 3 , (num_classes + 5) ) ) 
+    
+    outs.append(predictions1)
+    outs.append(predictions2)
+    outs.append(predictions3)
 
-def detect_image(image):
+    return outs
+
+def detect_image(sess, image):
     start = timer()
 
     image_shape = ( image.size[1], image.size[0] , 3)
@@ -280,7 +284,7 @@ def detect_image(image):
     #print(image_shape)
     #print(image_data.shape)
 
-    outs = tflite_out(image_data )
+    outs = tf_out(sess,image_data)
     
     out_boxes, out_classes, out_scores = yolo_out( outs , image_shape )
 
@@ -333,7 +337,7 @@ def detect_image(image):
     print(end - start)
     return image
 
-def detect_video( video_path, output_path="" ):
+def detect_video( sess , video_path, output_path="" ):
     vid = cv2.VideoCapture(video_path)
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
@@ -352,7 +356,7 @@ def detect_video( video_path, output_path="" ):
     while True:
         return_value, frame = vid.read()
         image = Image.fromarray(frame)
-        image = detect_image(image)
+        image = detect_image(sess , image)
         result = np.asarray(image)
         curr_time = timer()
         exec_time = curr_time - prev_time

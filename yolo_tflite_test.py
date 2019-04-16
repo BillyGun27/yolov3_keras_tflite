@@ -200,7 +200,7 @@ anchor_mask = [[6,7,8], [3,4,5], [0,1,2]]
 
 img = "test_data/london.jpg"
 image = Image.open(img)
-model_image_size = (224 , 224)
+model_image_size = (416 , 416)
 
 image_shape = ( image.size[1], image.size[0] , 3)
 
@@ -219,12 +219,14 @@ print(image_data.shape)
 start = timer()
 
 # Load TFLite model and allocate tensors.
-interpreter = tf.lite.Interpreter(model_path="model_data/224small_mobilenet_yolo.tflite")
+interpreter = tf.lite.Interpreter(model_path="model_data/small_mobilenet_yolo.tflite")
 interpreter.allocate_tensors()
 
 # Get input and output tensors.
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
+
+print(output_details)
 
 # Test model on random input data.
 input_shape = input_details[0]['shape']
@@ -235,15 +237,16 @@ interpreter.set_tensor(input_details[0]['index'], input_data)
 
 interpreter.invoke()
 output_data1 = interpreter.get_tensor(output_details[0]['index'])
-output_data2 = interpreter.get_tensor(output_details[1]['index'])
-output_data3 = interpreter.get_tensor(output_details[2]['index'])
+#output_data2 = interpreter.get_tensor(output_details[1]['index'])
+#output_data3 = interpreter.get_tensor(output_details[2]['index'])
+
 
 print(output_data1.shape)
-print(output_data2.shape)
-print(output_data3.shape)
+#print(output_data2.shape)
+#print(output_data3.shape)
 #print(output_details)
 
-'''
+
 outs = []
 
 output_data1 = np.reshape(output_data1 , (1,13, 13, 3, 25)) 
@@ -322,5 +325,5 @@ cv2.resizeWindow('result', width,height)
 cv2.imshow("result", result)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-'''
+
 
