@@ -82,3 +82,7 @@ with detection_graph.as_default():
 
     end = timer()
     print(end - start)
+
+print(predictions1[0])
+print(predictions2.shape)
+print(predictions3.shape)

@@ -13,17 +13,19 @@ import cv2
 #model_path="model_data/224tiny_yolo.tflite"
 #model_path="model_data/mobilenet_trained_model.tflite"
 #model_path="model_data/mobilenetv2_trained_model.tflite"
-model_path="model_data/416bnfuse_small_mobilenets2_trained_model.tflite"
+#model_path="model_data/416bnfuse_small_mobilenets2_trained_model.tflite"
 #model_path="model_data/224small_mobilenets2_trained_model.tflite"
 #model_path="model_data/small_mobilenets2_trained_model.tflite"
 #model_path="model_data/416bnfuse_tiny_yolo.tflite"
+#model_path="model_data/quantized_small_mobilenet_yolo.tflite"
+model_path="model_data/quantized_224small_mobilenets2_trained_model.tflite"
 
 print(model_path)
 
 score_thres = 0.3 #obj, score
 iou_thres = 0.45 #nms, iou
-model_image_size = (416 , 416)
-#model_image_size = (224, 224)
+#model_image_size = (416 , 416)
+model_image_size = (224, 224)
 
 classes_path = 'class/voc_classes.txt'
 anchors_path = 'anchors/yolo_anchors.txt'
